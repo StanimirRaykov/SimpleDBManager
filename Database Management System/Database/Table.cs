@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace Database_Management_System.Database
 {
@@ -10,18 +11,26 @@ namespace Database_Management_System.Database
     {
         private string TableName;
         private List<Column> Columns;
-        private string DataFilePath;
+        private string tableFilePath;
 
-        public Table(string name, List<Column> columns)
+        public Table(string name, List<Column> columns, string databasePath)
         {
             TableName = name;
             Columns = columns;
-            DataFilePath = $"{name}.db";
+            tableFilePath = Path.Combine(databasePath, $"{TableName}.db");
+            if (!File.Exists(tableFilePath))
+            {
+                File.Create(tableFilePath).Dispose();
+                Console.WriteLine($"Table '' created successfully within database.");
+            }
         }
 
-        public static void CreateTable(string name, List<Column> columns)
+        public static Table CreateTable(string name, List<Column> columns, string databasePath)
         {
             //TODO: Implement logic for CreateTable function!
+            Table newTable = new Table(name, columns, databasePath);
+            Metadata.SaveTableMetadata(name, columns, databasePath);
+            return newTable;
         }
 
         public static void DropTable(string name)

@@ -11,5 +11,12 @@ namespace Database_Management_System.Database
         public string Name { get; set; }
         public string DataType { get; set; }
         public object DefaultValue { get; set; }
+
+        public Column(string name, string dataType, object defaultValue = null)
+        {
+            Name = name;
+            DataType = dataType;
+            DefaultValue = defaultValue;
+        }
     }
 }
