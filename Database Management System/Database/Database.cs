@@ -10,7 +10,6 @@ namespace Database_Management_System.Database
     public class Database
     {
         public string Name { get; private set; }
-
         private string dbPath;
         private List<Table> tables;
 

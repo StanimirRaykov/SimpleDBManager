@@ -1,4 +1,6 @@
 ﻿using Database_Management_System.Database;
+using Database_Management_System.Utilities;
+using Microsoft.VisualBasic;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -46,6 +48,7 @@ namespace Database_Management_System
 
                 case "INSERT":
                     //TODO: Imlement logic -> InsertInto(command);
+                    InsertInto(command);
                     break;
 
                 case "DELETE":
@@ -92,7 +95,83 @@ namespace Database_Management_System
             var table = Table.CreateTable(tableName, columns, currentDatabase.Name);
             currentDatabase.AttachTable(table);
         }
-        
+        private void InsertInto(string command)
+        {
+            // Split the command into major parts
+            var tokens = Functions.StringSplit(command, ' ');
+
+            if (tokens.Count < 4 || tokens[1].ToUpper() != "INTO")
+            {
+                Console.WriteLine("Invalid command syntax for INSERT INTO.");
+                return;
+            }
+
+            // Extract table name
+            string tableName = tokens[2].Trim();
+
+            // Check for VALUES keyword
+            int valuesIndex = command.IndexOf("VALUES", StringComparison.OrdinalIgnoreCase);
+
+            if (valuesIndex == -1)
+            {
+                Console.WriteLine("Invalid command syntax for INSERT INTO. Missing 'VALUES' keyword.");
+                return;
+            }
+
+            // Extract column names and values
+            string columnPart = command.Substring(command.IndexOf('(') + 1, command.IndexOf(')') - command.IndexOf('(') - 1);
+            string valuePart = command.Substring(valuesIndex + "VALUES".Length).Trim();
+
+            var columnNames = Functions.StringSplit(columnPart, ',');
+            var values = ParseValues(valuePart);
+
+            // Locate the table and insert the row
+            if (currentDatabase == null)
+            {
+                Console.WriteLine("No database selected. Please create or switch to a database first.");
+                return;
+            }
+
+            string databasePath = Path.Combine(Settings.BaseDirectory, currentDatabase.Name);
+            string tableFilePath = Path.Combine(databasePath, $"{tableName}.db");
+
+            if (!File.Exists(tableFilePath))
+            {
+                Console.WriteLine($"Table '{tableName}' does not exist in the current database.");
+                return;
+            }
+
+            // Create a temporary table object to access methods
+            var table = Table.LoadTable(tableName, databasePath);
+            table.InsertRow(values);
+        }
+
+
+        private List<object> ParseValues(string valuePart)
+        {
+            valuePart = valuePart.Trim('(', ')');
+            var values = Functions.StringSplit(valuePart, ',');
+            var parsedValues = new List<object>();
+
+            foreach (var value in values)
+            {
+                if (int.TryParse(value.Trim(), out int intValue))
+                {
+                    parsedValues.Add(intValue);
+                }
+                else if (DateTime.TryParse(value.Trim('\''), out DateTime dateValue))
+                {
+                    parsedValues.Add(dateValue);
+                }
+                else
+                {
+                    parsedValues.Add(value.Trim('\'').Trim());
+                }
+            }
+
+            return parsedValues;
+        }
+
         private List<Column> ParseColumnDefinitions(string columnDefinitions)
         {
             var columns = new List<Column>();
