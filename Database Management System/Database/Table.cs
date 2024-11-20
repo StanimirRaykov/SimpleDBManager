@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Database_Management_System.Utilities;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,15 +12,19 @@ namespace Database_Management_System.Database
     public class Table
     {
         public string TableName { get; private set; }
-        private List<Column> Columns;
         private string tableFilePath;
         private int rowCount;
-        private Hashtable schema;
+        private HashTable<string, (string DataType, object DefaultValue)> schema;
 
         public Table(string name, List<Column> columns, string databasePath)
         {
             TableName = name;
-            Columns = columns;
+            schema = new HashTable<string, (string DataType, object DefaultValue)>();
+
+            foreach (var column in columns)
+            {
+                schema.Add(column.Name, (column.DataType, column.DefaultValue));
+            }
 
             if (!Directory.Exists(databasePath))
             {
@@ -46,7 +51,7 @@ namespace Database_Management_System.Database
 
         public static Table CreateTable(string name, List<Column> columns, string databasePath)
         {
-            //TODO: Implement logic for CreateTable function!
+
             return new Table(name, columns, databasePath);
         }
         public static Table LoadTable(string name, string databasePath)
@@ -61,7 +66,7 @@ namespace Database_Management_System.Database
         {
             //TODO: Implement logic for DropTable function!
         }
-
+        //TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! FIX INSERT ROW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! (Columns list doesn't exist anymore.)
         public void InsertRow(List<object> values)
         {
             if (Columns == null || Columns.Count == 0)
