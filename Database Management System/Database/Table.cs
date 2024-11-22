@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -12,6 +13,7 @@ namespace Database_Management_System.Database
     public class Table
     {
         public string TableName { get; private set; }
+        public List<Column> Columns { get; private set; }
         private string tableFilePath;
         private int rowCount;
         private HashTable<string, (string DataType, object DefaultValue)> schema;
@@ -84,6 +86,8 @@ namespace Database_Management_System.Database
             // Validate data types
             for (int i = 0; i < values.Count; i++)
             {
+                var column = Columns[i];
+                var (DataType, _) = schema.Get(column.Name);
                 if (!IsValidType(values[i], Columns[i].DataType))
                 {
                     Console.WriteLine($"Error: Value '{values[i]}' does not match the column type '{Columns[i].DataType}'.");
@@ -121,31 +125,32 @@ namespace Database_Management_System.Database
         {
             return string.Join(",", values);
         }
-        public void VisualizeTable()
-        {
-            if (!File.Exists(tableFilePath))
-            {
-                Console.WriteLine($"Table file '{tableFilePath}' does not exist.");
-                return;
-            }
+        //TODO: FIX VISUALIZE TABLE METHOD BECAUSE COLUMNS LIST DOESN'T EXIST ANYMORE
+        //public void VisualizeTable()
+        //{
+        //    if (!File.Exists(tableFilePath))
+        //    {
+        //        Console.WriteLine($"Table file '{tableFilePath}' does not exist.");
+        //        return;
+        //    }
 
-            // Print table headers
-            Console.WriteLine($"\nTable: {TableName}");
-            foreach (var column in Columns)
-            {
-                Console.Write($"{column.Name}\t");
-            }
-            Console.WriteLine("\n" + new string('-', 50));
+        //    // Print table headers
+        //    Console.WriteLine($"\nTable: {TableName}");
+        //    foreach (var column in Columns)
+        //    {
+        //        Console.Write($"{column.Name}\t");
+        //    }
+        //    Console.WriteLine("\n" + new string('-', 50));
 
-            // Print table rows
-            string[] rows = File.ReadAllLines(tableFilePath);
-            foreach (string row in rows)
-            {
-                Console.WriteLine(row.Replace(",", "\t")); // Display rows in tabular format
-            }
+        //    // Print table rows
+        //    string[] rows = File.ReadAllLines(tableFilePath);
+        //    foreach (string row in rows)
+        //    {
+        //        Console.WriteLine(row.Replace(",", "\t")); // Display rows in tabular format
+        //    }
 
-            Console.WriteLine(new string('-', 50));
-        }
+        //    Console.WriteLine(new string('-', 50));
+        //}
 
         public void DeleteRow(int rowIndex)
         {

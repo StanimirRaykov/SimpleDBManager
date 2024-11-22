@@ -10,13 +10,13 @@ namespace Database_Management_System.Database
     public class Database
     {
         public string Name { get; private set; }
-        private string dbPath;
+        public string dbPath;
         private List<Table> tables;
 
         public Database(string name)
         {
             Name = name;
-            dbPath = Path.Combine(Settings.BaseDirectory, name);
+            dbPath = Path.Combine(Settings.BaseDirectory, Name);
             tables = new List<Table>();
 
             if (!Directory.Exists(dbPath))

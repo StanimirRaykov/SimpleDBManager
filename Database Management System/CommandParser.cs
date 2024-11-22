@@ -92,7 +92,7 @@ namespace Database_Management_System
             List<Column> columns = ParseColumnDefinitions(columnDefinitions);
 
             // Create table within the current database
-            var table = Table.CreateTable(tableName, columns, currentDatabase.Name);
+            var table = Table.CreateTable(tableName, columns, currentDatabase.dbPath);
             currentDatabase.AttachTable(table);
         }
         private void InsertInto(string command)
