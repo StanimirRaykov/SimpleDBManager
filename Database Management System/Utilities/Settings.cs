@@ -8,15 +8,7 @@ namespace Database_Management_System.Utilities
 {
     public static class Settings
     {
-        public const string BaseDirectory = @"C:\Users\Stanimir\Documents\TEST FILES";
-        static Settings()
-        {
-            // Ensure the base directory exists
-            if (!Directory.Exists(BaseDirectory))
-            {
-                Directory.CreateDirectory(BaseDirectory);
-                Console.WriteLine($"Base directory created: {BaseDirectory}");
-            }
-        }
+        //public const string BaseDirectory = @"C:\Users\Stanimir\Documents\TEST FILES"; //Home pc test directory.
+        public const string BaseDirectory = @"C:\Users\stanimir.raykov\Documents\SimpleDB_TestFolder"; //Work laptop test directory.
     }
 }
