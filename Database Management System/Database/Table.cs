@@ -16,6 +16,7 @@ namespace Database_Management_System.Database
         public List<Column> Columns { get; private set; }
         private string tableFilePath;
         private int rowCount;
+        public List<Column> Columns;
         private HashTable<string, (string DataType, object DefaultValue)> schema;
 
         public Table(string name, List<Column> columns, string databasePath)
