@@ -16,12 +16,12 @@ namespace Database_Management_System.Database
         public Database(string name)
         {
             Name = name;
-            dbPath = Path.Combine(Settings.BaseDirectory, name);
+            dbPath = Path.Combine(Settings.BaseDirectory, Name);
             tables = new List<Table>();
 
             if (!Directory.Exists(dbPath))
             {
-                Directory.CreateDirectory(Settings.BaseDirectory);
+                Directory.CreateDirectory(dbPath);
                 Console.WriteLine($"Database '{Name}' created successfully.");
             }
             else
@@ -49,6 +49,10 @@ namespace Database_Management_System.Database
             {
                 Console.WriteLine($"Database '{Name}' does not exist.");
             }
+        }
+        public string GetPath()
+        {
+            return dbPath;
         }
     }
 }
