@@ -97,43 +97,55 @@ namespace Database_Management_System
         }
         private void InsertInto(string command)
         {
-            // Split the command into major parts
-            var tokens = Functions.StringSplit(command, ' ');
+            int intoIndex = command.IndexOf("INTO", StringComparison.OrdinalIgnoreCase);
+            int valuesIndex = command.IndexOf("VALUES", StringComparison.OrdinalIgnoreCase);
 
-            if (tokens.Count < 4 || tokens[1].ToUpper() != "INTO")
+            if (intoIndex == -1 || valuesIndex == -1 || valuesIndex <= intoIndex)
             {
                 Console.WriteLine("Invalid command syntax for INSERT INTO.");
                 return;
             }
 
-            // Extract table name
-            string tableName = tokens[2].Trim(); //11 chars to '('
+            // Extract the part between "INTO" and "VALUES"
+            string intoPart = command.Substring(intoIndex + 4, valuesIndex - (intoIndex + 4)).Trim(); // Remove "INTO" and trim
 
-            // Check for VALUES keyword
-            int valuesIndex = command.IndexOf("VALUES", StringComparison.OrdinalIgnoreCase);
+            // Extract table name and columns
+            int openParenIndex = intoPart.IndexOf('(');
+            int closeParenIndex = intoPart.IndexOf(')');
 
-            if (valuesIndex == -1)
+            if (openParenIndex == -1 || closeParenIndex == -1 || closeParenIndex <= openParenIndex)
             {
-                Console.WriteLine("Invalid command syntax for INSERT INTO. Missing 'VALUES' keyword.");
+                Console.WriteLine("Invalid command syntax for INSERT INTO. Missing column list.");
                 return;
             }
 
-            // Extract column names and values
-            string columnPart = command.Substring(command.IndexOf('(') + 1, command.IndexOf(')') - command.IndexOf('(') - 1);
-            string valuePart = command.Substring(valuesIndex + "VALUES".Length).Trim();
+            string tableName = intoPart.Substring(0, openParenIndex).Trim(); // Extract table name
+            string columnPart = intoPart.Substring(openParenIndex + 1, closeParenIndex - openParenIndex - 1).Trim(); // Extract columns
 
+            // Extract values
+            string valuePart = command.Substring(valuesIndex + "VALUES".Length).Trim();
+            if (!valuePart.StartsWith("(") || !valuePart.EndsWith(")"))
+            {
+                Console.WriteLine("Invalid command syntax for INSERT INTO. Missing or invalid values.");
+                return;
+            }
+
+            valuePart = valuePart.Substring(1, valuePart.Length - 2).Trim(); // Remove parentheses around values
+
+            // Split columns and values into lists
             var columnNames = Functions.StringSplit(columnPart, ',');
             var values = ParseValues(valuePart);
 
-            // Locate the table and insert the row
+            // Check if current database is set
             if (currentDatabase == null)
             {
                 Console.WriteLine("No database selected. Please create or switch to a database first.");
                 return;
             }
 
+            // Locate the table
             string databasePath = Path.Combine(Settings.BaseDirectory, currentDatabase.Name);
-            string tableFilePath = Path.Combine(databasePath, $"{tableName}.db");
+            string tableFilePath = Path.Combine(databasePath, $"{tableName}.txt");
 
             if (!File.Exists(tableFilePath))
             {
@@ -141,32 +153,78 @@ namespace Database_Management_System
                 return;
             }
 
-            // Create a temporary table object to access methods
+            // Load the table and validate column mappings
             var table = Table.LoadTable(tableName, databasePath);
-            table.InsertRow(values);
+            if (columnNames.Count != values.Count)
+            {
+                Console.WriteLine("Error: Mismatch between column count and value count.");
+                return;
+            }
+
+            // Map columns to values
+            var row = new List<object>();
+            for (int i = 0; i < columnNames.Count; i++)
+            {
+                string columnName = columnNames[i].Trim();
+                string value = values[i].Trim();
+
+                // Find the column in the table schema
+                var column = table.Columns.Find(c => c.Name.Equals(columnName, StringComparison.OrdinalIgnoreCase));
+
+                if (column == null)
+                {
+                    Console.WriteLine($"Error: Column '{columnName}' does not exist in table '{tableName}'.");
+                    return;
+                }
+
+                // Validate the value type and parse it
+                object parsedValue = ParseValue(value, column.DataType);
+                if (parsedValue == null)
+                {
+                    Console.WriteLine($"Error: Invalid value '{value}' for column '{columnName}' with type '{column.DataType}'.");
+                    return;
+                }
+
+                row.Add(parsedValue);
+            }
+
+            // Insert the row
+            table.InsertRow(row);
+        }
+        private object ParseValue(string value, string dataType)
+        {
+            // Trim the value to remove surrounding whitespace and single quotes
+            value = value.Trim().Trim('\'');
+
+            switch (dataType.ToLower())
+            {
+                case "int":
+                    if (int.TryParse(value, out int intValue)) return intValue;
+                    break;
+                case "string":
+                    return value; // Strings don't need further parsing
+                case "date":
+                    if (DateTime.TryParse(value, out DateTime dateValue)) return dateValue;
+                    break;
+            }
+            return null; // Invalid value
         }
 
 
-        private List<object> ParseValues(string valuePart)
+        private List<string> ParseValues(string valuePart)
         {
-            valuePart = valuePart.Trim('(', ')');
+            if (valuePart.StartsWith("(") && valuePart.EndsWith(")"))
+            {
+                valuePart = valuePart.Substring(1, valuePart.Length - 2);
+            }
+
+            // Split values by commas and trim each value
             var values = Functions.StringSplit(valuePart, ',');
-            var parsedValues = new List<object>();
+            var parsedValues = new List<string>();
 
             foreach (var value in values)
             {
-                if (int.TryParse(value.Trim(), out int intValue))
-                {
-                    parsedValues.Add(intValue);
-                }
-                else if (DateTime.TryParse(value.Trim('\''), out DateTime dateValue))
-                {
-                    parsedValues.Add(dateValue);
-                }
-                else
-                {
-                    parsedValues.Add(value.Trim('\'').Trim());
-                }
+                parsedValues.Add(value.Trim());
             }
 
             return parsedValues;

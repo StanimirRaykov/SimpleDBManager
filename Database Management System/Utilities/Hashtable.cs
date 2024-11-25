@@ -9,12 +9,16 @@ namespace Database_Management_System.Utilities
     public class HashTable<TKey, TValue>
     {
         private readonly int size;
-        private readonly LinkedList<KeyValuePair<TKey, TValue>>[] buckets;
+        private readonly List<KeyValuePair<TKey, TValue>>[] buckets;
 
         public HashTable(int size = 16)
         {
             this.size = size;
-            buckets = new LinkedList<KeyValuePair<TKey, TValue>>[size];
+            buckets = new List<KeyValuePair<TKey, TValue>>[size];
+            for (int i = 0; i < size; i++)
+            {
+                buckets[i] = new List<KeyValuePair<TKey, TValue>>(); // Initialize each bucket as a List
+            }
         }
 
         private int GetBucketIndex(TKey key)
@@ -25,11 +29,8 @@ namespace Database_Management_System.Utilities
         public void Add(TKey key, TValue value)
         {
             int index = GetBucketIndex(key);
-            if (buckets[index] == null)
-            {
-                buckets[index] = new LinkedList<KeyValuePair<TKey, TValue>>();
-            }
 
+            // Check if the key already exists in the current bucket
             foreach (var pair in buckets[index])
             {
                 if (pair.Key.Equals(key))
@@ -38,20 +39,18 @@ namespace Database_Management_System.Utilities
                 }
             }
 
-            buckets[index].AddLast(new KeyValuePair<TKey, TValue>(key, value));
+            // Add the key-value pair to the correct bucket
+            buckets[index].Add(new KeyValuePair<TKey, TValue>(key, value));
         }
 
         public TValue Get(TKey key)
         {
             int index = GetBucketIndex(key);
-            if (buckets[index] != null)
+            foreach (var pair in buckets[index])
             {
-                foreach (var pair in buckets[index])
+                if (pair.Key.Equals(key))
                 {
-                    if (pair.Key.Equals(key))
-                    {
-                        return pair.Value;
-                    }
+                    return pair.Value;
                 }
             }
 
@@ -61,38 +60,43 @@ namespace Database_Management_System.Utilities
         public bool ContainsKey(TKey key)
         {
             int index = GetBucketIndex(key);
-            if (buckets[index] != null)
+            foreach (var pair in buckets[index])
             {
-                foreach (var pair in buckets[index])
+                if (pair.Key.Equals(key))
                 {
-                    if (pair.Key.Equals(key))
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
-
             return false;
         }
 
         public void Remove(TKey key)
         {
             int index = GetBucketIndex(key);
-            if (buckets[index] != null)
+            var bucket = buckets[index];
+
+            var pairToRemove = bucket.FirstOrDefault(pair => pair.Key.Equals(key));
+            if (pairToRemove.Equals(default(KeyValuePair<TKey, TValue>)))
             {
-                var node = buckets[index].First;
-                while (node != null)
-                {
-                    if (node.Value.Key.Equals(key))
-                    {
-                        buckets[index].Remove(node);
-                        return;
-                    }
-                    node = node.Next;
-                }
+                throw new KeyNotFoundException($"Key '{key}' not found in the hashtable.");
             }
 
-            throw new KeyNotFoundException($"Key '{key}' not found in the hashtable.");
+            bucket.Remove(pairToRemove);
+        }
+
+        // Utility methods to access bucket size and entries
+        public int GetSize()
+        {
+            return size;
+        }
+
+        public List<KeyValuePair<TKey, TValue>> GetBucket(int index)
+        {
+            if (index >= 0 && index < size)
+            {
+                return buckets[index];
+            }
+            return null;
         }
     }
 }
