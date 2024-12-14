@@ -11,13 +11,13 @@ namespace Database_Management_System.Database
     {
         public string Name { get; private set; }
         public string dbPath;
-        private List<Table> tables;
+        private HashTable<string, Table> tables;
 
         public Database(string name)
         {
             Name = name;
             dbPath = Path.Combine(Settings.BaseDirectory, Name);
-            tables = new List<Table>();
+            tables = new HashTable<string, Table>();
 
             if (!Directory.Exists(dbPath))
             {
@@ -35,9 +35,25 @@ namespace Database_Management_System.Database
         }
         public void AttachTable(Table table)
         {
-            tables.Add(table);
-            Console.WriteLine($"Table '{table}' attached to database '{Name}'.");
+            if (tables.ContainsKey(table.TableName))
+            {
+                Console.WriteLine($"Table '{table.TableName}' already exists in database '{Name}'.");
+                return;
+            }
+
+            tables.Add(table.TableName, table); // Add the table using HashTable
+            Console.WriteLine($"Table '{table.TableName}' attached to database '{Name}'.");
         }
+        public Table GetTable(string tableName)
+        {
+            if (!tables.ContainsKey(tableName))
+            {
+                throw new Exception($"Table '{tableName}' does not exist in database '{Name}'.");
+            }
+
+            return tables.Get(tableName); // Retrieve the table from HashTable
+        }
+
         public void DeleteDatabase()
         {
             if (Directory.Exists(dbPath))

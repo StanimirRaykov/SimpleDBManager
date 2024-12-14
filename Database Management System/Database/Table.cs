@@ -16,15 +16,23 @@ namespace Database_Management_System.Database
         public List<Column> Columns { get; private set; }
         private string tableFilePath;
         private HashTable<string, (string DataType, object DefaultValue)> schema;
+        private int nextId;
+
 
         public Table(string name, List<Column> columns, string databasePath)
         {
             TableName = name;
             schema = new HashTable<string, (string DataType, object DefaultValue)>();
             Columns = columns ?? new List<Column>();
+
+            if (!Columns.Any(c => c.Name.Equals("Id", StringComparison.OrdinalIgnoreCase)))
+            {
+                Columns.Insert(0, new Column("Id", "int", null)); // Add Id column as the first column
+            }
+
             foreach (var column in columns)
             {
-                schema.Add(column.Name, (column.DataType, column.DefaultValue));
+                schema.Add(column.Name, (column.DataType, column.DefaultValue)); 
             }
 
             if (!Directory.Exists(databasePath))
@@ -37,23 +45,50 @@ namespace Database_Management_System.Database
             tableFilePath = Path.Combine(databasePath, $"{TableName}.txt");
 
             // Create table file within the database directory
-            if (!File.Exists(tableFilePath))
+            if (File.Exists(tableFilePath))
             {
-                using (var writer = File.CreateText(tableFilePath))
+                // Validate existing file schema and initialize nextId
+                using (var reader = new StreamReader(tableFilePath))
                 {
-                    // Write the header row (schema) using the original columns list for correct order
-                    var headerRow = string.Join(",", columns.Select(column =>
-                        $"{column.Name}:{column.DataType}:{(column.DefaultValue ?? "null")}"
-                    ));
+                    string fileHeader = reader.ReadLine();
+                    var expectedHeader = string.Join(",", Columns.Select(column =>
+                        $"{column.Name}:{column.DataType}"));
 
-                    writer.WriteLine(headerRow); // Write the header row to the file
+                    if (!fileHeader.Equals(expectedHeader, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new Exception($"Schema mismatch in table file '{tableFilePath}'. Expected: {expectedHeader}, Found: {fileHeader}");
+                    }
+
+                    // Read rows to determine the next ID
+                    nextId = 1; // Default to 1 if no rows exist
+                    while (!reader.EndOfStream)
+                    {
+                        string row = reader.ReadLine();
+                        if (!string.IsNullOrWhiteSpace(row))
+                        {
+                            var rowParts = Functions.StringSplit(row, ',');
+                            if (int.TryParse(rowParts[0], out int lastId))
+                            {
+                                nextId = Math.Max(nextId, lastId + 1);
+                            }
+                        }
+                    }
                 }
 
-                Console.WriteLine($"Table '{TableName}' created successfully at '{tableFilePath}'.");
+                Console.WriteLine($"Table '{TableName}' already exists at '{tableFilePath}'.");
             }
             else
             {
-                Console.WriteLine($"Table '{TableName}' already exists at '{tableFilePath}'.");
+                // Create new table file
+                using (var writer = File.CreateText(tableFilePath))
+                {
+                    var headerRow = string.Join(",", Columns.Select(column =>
+                        $"{column.Name}:{column.DataType}"));
+                    writer.WriteLine(headerRow);
+                }
+
+                nextId = 1; // Initialize nextId
+                Console.WriteLine($"Table '{TableName}' created successfully at '{tableFilePath}'.");
             }
         }
 
@@ -120,42 +155,43 @@ namespace Database_Management_System.Database
         }
 
         //TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! FIX INSERT ROW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! (Columns list doesn't exist anymore.)
-        public void InsertRow(List<object> values)
+        public void InsertRow(List<string> columnNames, List<object> values)
         {
-            if (Columns == null || Columns.Count == 0)
-            {
-                Console.WriteLine($"Error: Table '{TableName}' schema is not loaded.");
-                return;
-            }
+            // Add automatic ID to the row
+            var row = new List<object> { nextId }; // Start with the ID
+            nextId++; // Increment for the next row
 
-            if (values.Count != Columns.Count)
+            // Populate remaining columns in schema order
+            foreach (var key in schema.GetKeys())
             {
-                Console.WriteLine("Error: Mismatch between number of columns and provided values.");
-                return;
-            }
-
-            // Validate data types
-            for (int i = 0; i < values.Count; i++)
-            {
-                var column = Columns[i];
-                var (DataType, _) = schema.Get(column.Name);
-                if (!IsValidType(values[i], Columns[i].DataType))
+                if (key.Equals("Id", StringComparison.OrdinalIgnoreCase))
                 {
-                    Console.WriteLine($"Error: Value '{values[i]}' does not match the column type '{Columns[i].DataType}'.");
-                    return;
+                    continue; // Skip ID column (already added)
+                }
+
+                int index = columnNames.FindIndex(name => name.Equals(key, StringComparison.OrdinalIgnoreCase));
+                if (index >= 0)
+                {
+                    // Use the value provided for this column
+                    row.Add(values[index]);
+                }
+                else
+                {
+                    // Use the default value for this column
+                    var columnDetails = schema.Get(key);
+                    row.Add(columnDetails.DefaultValue ?? "null");
                 }
             }
 
-            // Serialize the row as a comma-separated string
-            string row = SerializeRow(values);
-
-            // Append the row to the table file
+            // Serialize the row and append it to the table file
             using (StreamWriter writer = new StreamWriter(tableFilePath, append: true))
             {
-                writer.WriteLine(row);
+                writer.WriteLine(string.Join(",", row));
             }
+
             Console.WriteLine($"Row inserted successfully into table '{TableName}'.");
         }
+
         private bool IsValidType(object value, string dataType)
         {
             switch (dataType.ToLower())

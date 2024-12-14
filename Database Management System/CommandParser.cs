@@ -97,100 +97,51 @@ namespace Database_Management_System
         }
         private void InsertInto(string command)
         {
-            int intoIndex = command.IndexOf("INTO", StringComparison.OrdinalIgnoreCase);
-            int valuesIndex = command.IndexOf("VALUES", StringComparison.OrdinalIgnoreCase);
+            // Parse command: INSERT INTO TableName(Column1, Column2, ...) VALUES (Value1, Value2, ...)
+            var tokens = command.Split(new[] { "INSERT INTO", "VALUES" }, StringSplitOptions.RemoveEmptyEntries);
 
-            if (intoIndex == -1 || valuesIndex == -1 || valuesIndex <= intoIndex)
+            if (tokens.Length < 2)
             {
-                Console.WriteLine("Invalid command syntax for INSERT INTO.");
+                Console.WriteLine("Error: Invalid syntax for INSERT INTO.");
                 return;
             }
 
-            // Extract the part between "INTO" and "VALUES"
-            string intoPart = command.Substring(intoIndex + 4, valuesIndex - (intoIndex + 4)).Trim(); // Remove "INTO" and trim
+            string tableName = tokens[0].Split('(')[0].Trim();
+            string columnPart = tokens[0].Split('(')[1].Trim(' ', ')');
+            string valuePart = tokens[1].Trim(' ', '(', ')');
 
-            // Extract table name and columns
-            int openParenIndex = intoPart.IndexOf('(');
-            int closeParenIndex = intoPart.IndexOf(')');
+            var columnNames = columnPart.Split(',').Select(c => c.Trim()).ToList();
+            var values = valuePart.Split(',').Select(v => v.Trim(' ', '\'')).Cast<object>().ToList();
 
-            if (openParenIndex == -1 || closeParenIndex == -1 || closeParenIndex <= openParenIndex)
-            {
-                Console.WriteLine("Invalid command syntax for INSERT INTO. Missing column list.");
-                return;
-            }
-
-            string tableName = intoPart.Substring(0, openParenIndex).Trim(); // Extract table name
-            string columnPart = intoPart.Substring(openParenIndex + 1, closeParenIndex - openParenIndex - 1).Trim(); // Extract columns
-
-            // Extract values
-            string valuePart = command.Substring(valuesIndex + "VALUES".Length).Trim();
-            if (!valuePart.StartsWith("(") || !valuePart.EndsWith(")"))
-            {
-                Console.WriteLine("Invalid command syntax for INSERT INTO. Missing or invalid values.");
-                return;
-            }
-
-            valuePart = valuePart.Substring(1, valuePart.Length - 2).Trim(); // Remove parentheses around values
-
-            // Split columns and values into lists
-            var columnNames = Functions.StringSplit(columnPart, ',');
-            var values = ParseValues(valuePart);
-
-            // Check if current database is set
+            // Check if database is selected
             if (currentDatabase == null)
             {
-                Console.WriteLine("No database selected. Please create or switch to a database first.");
+                Console.WriteLine("Error: No database selected.");
                 return;
             }
 
-            // Locate the table
-            string databasePath = Path.Combine(Settings.BaseDirectory, currentDatabase.Name);
-            string tableFilePath = Path.Combine(databasePath, $"{tableName}.txt");
-
-            if (!File.Exists(tableFilePath))
+            // Get table from database
+            Table table;
+            try
             {
-                Console.WriteLine($"Table '{tableName}' does not exist in the current database.");
+                table = currentDatabase.GetTable(tableName);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
                 return;
             }
 
-            // Load the table and validate column mappings
-            var table = Table.LoadTable(tableName, databasePath);
-            if (columnNames.Count != values.Count)
+            try
             {
-                Console.WriteLine("Error: Mismatch between column count and value count.");
-                return;
+                table.InsertRow(columnNames, values);
             }
-
-            // Map columns to values
-            var row = new List<object>();
-            for (int i = 0; i < columnNames.Count; i++)
+            catch (Exception ex)
             {
-                string columnName = columnNames[i].Trim();
-                string value = values[i].Trim();
-
-                // Find the column in the table schema
-                var column = table.Columns.Find(c => c.Name.Equals(columnName, StringComparison.OrdinalIgnoreCase));
-
-                if (column == null)
-                {
-                    Console.WriteLine($"Error: Column '{columnName}' does not exist in table '{tableName}'.");
-                    return;
-                }
-
-                // Validate the value type and parse it
-                object parsedValue = ParseValue(value, column.DataType);
-                if (parsedValue == null)
-                {
-                    Console.WriteLine($"Error: Invalid value '{value}' for column '{columnName}' with type '{column.DataType}'.");
-                    return;
-                }
-
-                row.Add(parsedValue);
+                Console.WriteLine($"Error: {ex.Message}");
             }
-
-            // Insert the row
-            table.InsertRow(row);
         }
+
         private object ParseValue(string value, string dataType)
         {
             // Trim the value to remove surrounding whitespace and single quotes

@@ -56,6 +56,21 @@ namespace Database_Management_System.Utilities
 
             throw new KeyNotFoundException($"Key '{key}' not found in the hashtable.");
         }
+        public IEnumerable<TKey> GetKeys()
+        {
+            var keys = new List<TKey>();
+            foreach (var bucket in buckets)
+            {
+                if (bucket != null)
+                {
+                    foreach (var pair in bucket)
+                    {
+                        keys.Add(pair.Key);
+                    }
+                }
+            }
+            return keys;
+        }
 
         public bool ContainsKey(TKey key)
         {
