@@ -9,7 +9,8 @@ namespace Database_Management_System.Utilities
     public static class Settings
     {
         //Test directories
-        public const string BaseDirectory = @"C:\Users\Stanimir\Documents\TEST FILES"; //Home pc test directory.
+        public const string BaseDirectory = @"C:\Users\mirko\Documents\TestFiles"; //Personal laptop test directory
+        //public const string BaseDirectory = @"C:\Users\Stanimir\Documents\TEST FILES"; //Home pc test directory.
         //public const string BaseDirectory = @"C:\Users\stanimir.raykov\Documents\SimpleDB_TestFolder"; //Work laptop test directory.
     }
 }
