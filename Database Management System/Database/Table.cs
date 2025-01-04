@@ -149,12 +149,7 @@ namespace Database_Management_System.Database
                 return columns;
             }
         }
-        public static void DropTable(string name)
-        {
-            //TODO: Implement logic for DropTable function!
-        }
 
-        //TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! FIX INSERT ROW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! (Columns list doesn't exist anymore.)
         public void InsertRow(List<string> columnNames, List<object> values)
         {
             // Add automatic ID to the row
@@ -191,26 +186,56 @@ namespace Database_Management_System.Database
 
             Console.WriteLine($"Row inserted successfully into table '{TableName}'.");
         }
-
-        private bool IsValidType(object value, string dataType)
+        public void DeleteRows(int? rowNumber = null, Func<List<string>, bool> whereClause = null)
         {
-            switch (dataType.ToLower())
+            if (!File.Exists(tableFilePath))
             {
-                case "int":
-                    return int.TryParse(value.ToString(), out _);
-                case "string":
-                    return value is string;
-                case "date":
-                    return DateTime.TryParse(value.ToString(), out _);
-                default:
-                    return false;
+                Console.WriteLine($"Error: Table file '{tableFilePath}' does not exist.");
+                return;
             }
-        }
-        private string SerializeRow(List<object> values)
-        {
-            return string.Join(",", values);
-        }
 
+            // Read all rows from the file
+            var rows = File.ReadAllLines(tableFilePath).ToList();
+            if (rows.Count <= 1)
+            {
+                Console.WriteLine($"Error: No rows to delete in table '{TableName}'.");
+                return;
+            }
+
+            var schema = rows[0]; // Header row
+            var dataRows = rows.Skip(1).ToList();
+
+            // Determine rows to keep
+            var updatedRows = new List<string> { schema }; // Keep the header row
+
+            for (int i = 0; i < dataRows.Count; i++)
+            {
+                var row = dataRows[i];
+                var columns = Utilities.Functions.StringSplit(row, ',').ToList();
+
+                // Determine if the row should be deleted
+                bool deleteRow = false;
+
+                if (rowNumber.HasValue && i == rowNumber.Value - 1) // Row number is 1-based
+                {
+                    deleteRow = true;
+                }
+                else if (whereClause != null && whereClause(columns))
+                {
+                    deleteRow = true;
+                }
+
+                if (!deleteRow)
+                {
+                    updatedRows.Add(row); // Keep the row
+                }
+            }
+
+            // Rewrite the file with updated rows
+            File.WriteAllLines(tableFilePath, updatedRows);
+
+            Console.WriteLine($"Row(s) deleted successfully from table '{TableName}'.");
+        }
         //TODO: FIX VISUALIZE TABLE METHOD BECAUSE COLUMNS LIST DOESN'T EXIST ANYMORE
         //public void VisualizeTable()
         //{
@@ -247,5 +272,32 @@ namespace Database_Management_System.Database
         {
             //TODO: Implement logic for SelectRows function!
         }
+
+        public string GetTableInfo()
+        {
+            // Get the schema
+            string schemaInfo = string.Join(", ", Columns.Select(c => $"{c.Name}:{c.DataType}"));
+
+            // Get the number of records
+            int recordCount = 0;
+            if (File.Exists(tableFilePath))
+            {
+                // Count lines excluding the header
+                recordCount = File.ReadAllLines(tableFilePath).Skip(1).Count();
+            }
+
+            // Get the file size
+            long fileSize = new FileInfo(tableFilePath).Length;
+
+            // Build the table info string
+            var tableInfo = new StringBuilder();
+            tableInfo.AppendLine($"Table Name: {TableName}");
+            tableInfo.AppendLine($"Schema: {schemaInfo}");
+            tableInfo.AppendLine($"Number of Records: {recordCount}");
+            tableInfo.AppendLine($"File Size: {fileSize} bytes");
+
+            return tableInfo.ToString();
+        }
+
     }
 }

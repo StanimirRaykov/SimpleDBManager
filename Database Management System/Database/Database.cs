@@ -66,6 +66,33 @@ namespace Database_Management_System.Database
                 Console.WriteLine($"Database '{Name}' does not exist.");
             }
         }
+        public void DropTable(string tableName)
+        {
+            if (!tables.ContainsKey(tableName))
+            {
+                Console.WriteLine($"Error: Table '{tableName}' does not exist in database '{Name}'.");
+                return;
+            }
+
+            // Get the table's file path
+            var tableFilePath = Path.Combine(dbPath, $"{tableName}.txt");
+
+            // Delete the table file if it exists
+            if (File.Exists(tableFilePath))
+            {
+                File.Delete(tableFilePath);
+                Console.WriteLine($"Table file '{tableFilePath}' deleted successfully.");
+            }
+            else
+            {
+                Console.WriteLine($"Error: Table file '{tableFilePath}' does not exist.");
+            }
+
+            // Remove the table from the in-memory schema
+            tables.Remove(tableName);
+            Console.WriteLine($"Table '{tableName}' dropped successfully from database '{Name}'.");
+        }
+
         public string GetPath()
         {
             return dbPath;

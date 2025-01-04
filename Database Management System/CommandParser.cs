@@ -23,7 +23,6 @@ namespace Database_Management_System
                     if (tokens[1] == "TABLE")
                     {
                         CreateTable(command);
-                        //TODO: Imlement logic -> CreateTable(command);
                     }
                     else if (tokens[1].ToUpper() == "DATABASE")
                     {
@@ -38,7 +37,7 @@ namespace Database_Management_System
                 case "DROP":
                     if (tokens[1] == "TABLE")
                     {
-                        //TODO: Imlement logic -> DropTable(tokens[2]);
+                        HandleDropTable(tokens[2]);
                     }
                     else if (tokens[1] == "INDEX")
                     {
@@ -47,18 +46,23 @@ namespace Database_Management_System
                     break;
 
                 case "INSERT":
-                    //TODO: Imlement logic -> InsertInto(command);
                     InsertInto(command);
-                    break;
-
-                case "DELETE":
-                    //TODO: Imlement logic -> DeleteFrom(command);
                     break;
 
                 case "SELECT":
                     //TODO: Imlement logic -> Select(Command);
                     break;
 
+                case "TABLEINFO":
+                    HandleTableInfo(command);
+                    break;
+
+                case "USE":
+                    UseDatabase(tokens[1]);
+                    break;
+                case "DELETE":
+                    HandleDeleteFrom(command);
+                    break;
                 default:
                     Console.WriteLine("Invalid Command!");
                     break;
@@ -98,7 +102,7 @@ namespace Database_Management_System
         private void InsertInto(string command)
         {
             // Parse command: INSERT INTO TableName(Column1, Column2, ...) VALUES (Value1, Value2, ...)
-            var tokens = command.Split(new[] { "INSERT INTO", "VALUES" }, StringSplitOptions.RemoveEmptyEntries);
+            var tokens = command.Split(new[] { "INSERT INTO", "VALUES" }, StringSplitOptions.RemoveEmptyEntries); //TODO: Make this work with Functions.StringSplit
 
             if (tokens.Length < 2)
             {
@@ -142,67 +146,188 @@ namespace Database_Management_System
             }
         }
 
-        private object ParseValue(string value, string dataType)
-        {
-            // Trim the value to remove surrounding whitespace and single quotes
-            value = value.Trim().Trim('\'');
-
-            switch (dataType.ToLower())
-            {
-                case "int":
-                    if (int.TryParse(value, out int intValue)) return intValue;
-                    break;
-                case "string":
-                    return value; // Strings don't need further parsing
-                case "date":
-                    if (DateTime.TryParse(value, out DateTime dateValue)) return dateValue;
-                    break;
-            }
-            return null; // Invalid value
-        }
-
-
-        private List<string> ParseValues(string valuePart)
-        {
-            if (valuePart.StartsWith("(") && valuePart.EndsWith(")"))
-            {
-                valuePart = valuePart.Substring(1, valuePart.Length - 2);
-            }
-
-            // Split values by commas and trim each value
-            var values = Functions.StringSplit(valuePart, ',');
-            var parsedValues = new List<string>();
-
-            foreach (var value in values)
-            {
-                parsedValues.Add(value.Trim());
-            }
-
-            return parsedValues;
-        }
-
         private List<Column> ParseColumnDefinitions(string columnDefinitions)
         {
             var columns = new List<Column>();
-            var columnParts =  Utilities.Functions.StringSplit(columnDefinitions, ',');
+            var columnParts = Utilities.Functions.StringSplit(columnDefinitions, ',');
 
+            // Example: CREATE TABLE Sample(Name:string, BirthDate:date default '01.01.2022')
             foreach (var columnDef in columnParts)
             {
-                var parts =  Utilities.Functions.StringSplit(columnDef.Trim(), ' ');
-                var nameType =  Utilities.Functions.StringSplit(parts[0], ':');
-                var columnName = nameType[0];
-                var columnType = nameType[1];
+                var parts = Utilities.Functions.StringSplit(columnDef.Trim(), ' ');
 
-                object defaultValue = null;
-                if (parts.Count > 2 && parts[2].ToLower() == "default")
+                if (parts.Count < 1)
                 {
-                    defaultValue = parts[3].Trim('\''); // Removing quotes from the default value
+                    throw new Exception($"Invalid column definition: '{columnDef}'.");
+                }
+
+                // Extract name and type (e.g., "Name:string")
+                var nameType = Utilities.Functions.StringSplit(parts[0], ':');
+                if (nameType.Count != 2)
+                {
+                    throw new Exception($"Invalid column definition: '{columnDef}'. Expected format: 'Name:Type'.");
+                }
+
+                var columnName = nameType[0].Trim();
+                var columnType = nameType[1].Trim();
+
+                // Extract default value if specified
+                object defaultValue = null;
+                if (parts.Count > 2)
+                {
+                    for (int i = 1; i < parts.Count - 1; i++)
+                    {
+                        if (parts[i].ToLower() == "default")
+                        {
+                            defaultValue = parts[i + 1].Trim('\''); // Remove surrounding quotes
+                            break;
+                        }
+                    }
                 }
 
                 columns.Add(new Column(columnName, columnType, defaultValue));
             }
+
             return columns;
         }
+        private void UseDatabase(string command)
+        {
+            // Extract the database name
+            var tokens = command.Split(' ');
+            if (tokens.Length < 1)
+            {
+                Console.WriteLine("Error: Missing database name for USE command.");
+                return;
+            }
+
+            string databaseName = tokens[0];
+
+            // Path to the database directory
+            string databasePath = Path.Combine(Settings.BaseDirectory, databaseName);
+
+            // Check if the database directory exists
+            if (!Directory.Exists(databasePath))
+            {
+                Console.WriteLine($"Error: Database '{databaseName}' does not exist.");
+                return;
+            }
+
+            // Set the current database
+            currentDatabase = new Database.Database(databaseName); // Load the database
+            Console.WriteLine($"Using database '{databaseName}'.");
+        }
+
+        private void HandleDropTable(string command)
+        {
+            // Extract the table name from the command
+            var tokens = Utilities.Functions.StringSplit(command, ' ');
+            if (tokens.Count < 2)
+            {
+                Console.WriteLine("Error: Missing table name for DROP TABLE.");
+                return;
+            }
+
+            string tableName = tokens[2];
+
+            if (currentDatabase == null)
+            {
+                Console.WriteLine("Error: No database selected.");
+                return;
+            }
+
+            // Call DropTable on the current database
+            currentDatabase.DropTable(tableName);
+        }
+
+        private void HandleTableInfo(string command)
+        {
+            // Extract the table name from the command
+            var tokens = command.Split(' ');
+            if (tokens.Length < 2)
+            {
+                Console.WriteLine("Error: Missing table name for TABLEINFO.");
+                return;
+            }
+
+            string tableName = tokens[1];
+
+            if (currentDatabase == null)
+            {
+                Console.WriteLine("Error: No database selected.");
+                return;
+            }
+
+            //TODO: FIX this mess
+
+            //if (!currem)
+            //{
+            //    Console.WriteLine($"Error: Table '{tableName}' does not exist in the current database.");
+            //    return;
+            //}
+
+            var table = currentDatabase.GetTable(tableName);
+            Console.WriteLine(table.GetTableInfo());
+        }
+        private void HandleDeleteFrom(string command)  //Delete from {TableName} Where {Condition}
+                                                       //  0      1       2        3        4 
+        {
+            var tokens = Utilities.Functions.StringSplit(command, ' '); 
+
+            if (tokens.Count < 3)
+            {
+                Console.WriteLine("Error: Missing table name in DELETE FROM command.");
+                return;
+            }
+
+            string tableName = tokens[2];
+
+            if (currentDatabase == null)
+            {
+                Console.WriteLine("Error: No database selected.");
+                return;
+            }
+
+            //if (!currentDatabase.GetTable.ContainsKey(tableName))
+            //{
+            //    Console.WriteLine($"Error: Table '{tableName}' does not exist in the current database.");
+            //    return;
+            //}
+
+            var table = currentDatabase.GetTable(tableName);
+
+            // Check for optional WHERE clause
+            if (tokens.Count > 3 && tokens[3].Equals("WHERE", StringComparison.OrdinalIgnoreCase))
+            {
+                // Example: DELETE FROM Sample WHERE Name='John'
+                var condition = command.Substring(command.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase) + 6);
+                table.DeleteRows(whereClause: row =>
+                {
+                    // Simple condition parser (e.g., Name='John')
+                    var parts = Utilities.Functions.StringSplit(condition, '=');
+                    var columnName = parts[0].Trim();
+                    var value = parts[1].Trim('\'');
+
+                    var columnIndex = table.Columns.FindIndex(c => c.Name.Equals(columnName, StringComparison.OrdinalIgnoreCase));
+                    if (columnIndex == -1) return false;
+
+                    return row[columnIndex]?.ToString().Equals(value, StringComparison.OrdinalIgnoreCase) ?? false;
+
+                });
+            }
+            else
+            {
+                // Example: DELETE FROM Sample 2
+                if (tokens.Count > 3 && int.TryParse(tokens[3], out int rowNumber))
+                {
+                    table.DeleteRows(rowNumber);
+                }
+                else
+                {
+                    Console.WriteLine("Error: Invalid DELETE FROM syntax.");
+                }
+            }
+        }
+
 
     }
 }
