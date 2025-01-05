@@ -22,7 +22,7 @@ namespace Database_Management_System
                 case "CREATE":
                     if (tokens[1] == "TABLE")
                     {
-                        CreateTable(command);
+                        HandleCreateTable(command);
                     }
                     else if (tokens[1].ToUpper() == "DATABASE")
                     {
@@ -37,7 +37,7 @@ namespace Database_Management_System
                 case "DROP":
                     if (tokens[1] == "TABLE")
                     {
-                        HandleDropTable(tokens[2]);
+                        HandleDropTable(command);
                     }
                     else if (tokens[1] == "INDEX")
                     {
@@ -47,6 +47,11 @@ namespace Database_Management_System
 
                 case "INSERT":
                     InsertInto(command);
+                    break;
+
+                case "GET":
+                    if (tokens[1] == "ROW")
+                        HandleGetRow(command);
                     break;
 
                 case "SELECT":
@@ -60,9 +65,12 @@ namespace Database_Management_System
                 case "USE":
                     UseDatabase(tokens[1]);
                     break;
+
                 case "DELETE":
-                    HandleDeleteFrom(command);
+                    if (tokens[1] == "FROM")
+                        HandleDeleteFrom(command);
                     break;
+
                 default:
                     Console.WriteLine("Invalid Command!");
                     break;
@@ -72,7 +80,7 @@ namespace Database_Management_System
         {
             currentDatabase = Database.Database.CreateDatabase(dbName);
         }
-        private void CreateTable(string command)
+        private void HandleCreateTable(string command)
         {
             if (currentDatabase == null)
             {
@@ -221,7 +229,7 @@ namespace Database_Management_System
         {
             // Extract the table name from the command
             var tokens = Utilities.Functions.StringSplit(command, ' ');
-            if (tokens.Count < 2)
+            if (tokens.Count < 3)
             {
                 Console.WriteLine("Error: Missing table name for DROP TABLE.");
                 return;
@@ -327,6 +335,63 @@ namespace Database_Management_System
                 }
             }
         }
+
+        private void HandleGetRow(string command)
+        {
+            // Split the command using the custom StringSplit function
+            var tokens = Utilities.Functions.StringSplit(command, ' ');
+
+            // Ensure the command has at least 4 tokens
+            if (tokens.Count < 4)
+            {
+                Console.WriteLine("Error: Invalid syntax for GET ROW. Use: GET ROW <row_numbers> FROM <table_name>");
+                return;
+            }
+
+            // Validate "FROM" keyword
+            if (!tokens[3].Equals("FROM", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("Error: Invalid syntax for GET ROW. Use: GET ROW <row_numbers> FROM <table_name>");
+                return;
+            }
+
+            // Extract row numbers and table name
+            string rowNumbers = tokens[2]; // e.g., "1,3"
+            string tableName = tokens[4];  // e.g., "Sample"
+
+            // Ensure row numbers are provided
+            if (string.IsNullOrWhiteSpace(rowNumbers))
+            {
+                Console.WriteLine("Error: No valid row numbers provided.");
+                return;
+            }
+
+            // Ensure the table name is not empty
+            if (string.IsNullOrWhiteSpace(tableName))
+            {
+                Console.WriteLine("Error: Invalid syntax for GET ROW. Table name cannot be empty.");
+                return;
+            }
+
+            // Ensure a database is selected
+            if (currentDatabase == null)
+            {
+                Console.WriteLine("Error: No database selected.");
+                return;
+            }
+
+            // Ensure the table exists in the current database
+            if (!currentDatabase.ContainsTable(tableName))
+            {
+                Console.WriteLine($"Error: Table '{tableName}' does not exist in the current database.");
+                return;
+            }
+
+            // Retrieve and display the rows
+            var table = currentDatabase.GetTable(tableName);
+            table.GetRows(rowNumbers); // Call the GetRows method
+        }
+
 
 
     }

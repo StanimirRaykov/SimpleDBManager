@@ -236,6 +236,7 @@ namespace Database_Management_System.Database
 
             Console.WriteLine($"Row(s) deleted successfully from table '{TableName}'.");
         }
+
         //TODO: FIX VISUALIZE TABLE METHOD BECAUSE COLUMNS LIST DOESN'T EXIST ANYMORE
         //public void VisualizeTable()
         //{
@@ -262,11 +263,6 @@ namespace Database_Management_System.Database
 
         //    Console.WriteLine(new string('-', 50));
         //}
-
-        public void DeleteRow(int rowIndex)
-        {
-            //TODO: Implement logic for DeleteRow function!
-        }
 
         public void SelectRows(string condition)
         {
@@ -299,5 +295,51 @@ namespace Database_Management_System.Database
             return tableInfo.ToString();
         }
 
+        public void GetRows(string rowNumbers)
+        {
+            if(!File.Exists(tableFilePath))
+            {
+                Console.WriteLine($"Error: Table file '{tableFilePath}' does not exist.");
+                return;
+            }
+
+            List <int> rowIndexes = Utilities.Functions.StringSplit(rowNumbers, ',')
+                                .Select(r => int.TryParse(r.Trim(), out int n) ? n - 1 : -1) // Convert to 0-based indexes
+                                .Where(r => r >= 0) // Filter out invalid indexes
+                                .ToList();
+
+            if(rowIndexes.Count == 0)
+            {
+                Console.WriteLine("Error: No valid row numbers provided.");
+                return;
+            }
+
+            using (var reader = new StreamReader(tableFilePath))                                                  /*  “GET ROW 1,2 FROM Sample*/
+            {                                                                                                       
+                string header = reader.ReadLine();                                                                /*  “Id:    Name:       BirthDate:*/
+                List <string> headers = Utilities.Functions.StringSplit(header, ',')                              /*  1       Иван        01.01.2022*/
+                    .Select(h => Utilities.Functions.StringSplit(h, ':')[0]).ToList();                            /*  2	    Ангел		01.01.2024”*/
+                Console.WriteLine(string.Join('\t', headers)); //Display headers in the visualization
+
+                int currentRowIndex = 0;
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    if (rowIndexes.Contains(currentRowIndex))
+                    {
+                        // Print the row in tabular format
+                        var columns = Utilities.Functions.StringSplit(line, ',');
+                        Console.WriteLine(string.Join("\t", columns));
+                    }
+                    currentRowIndex++;
+
+                    // Stop reading if all requested rows are found
+                    if (currentRowIndex > rowIndexes.Max())
+                    {
+                        break;
+                    }
+                }
+            }
+        }
     }
 }

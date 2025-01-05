@@ -10,7 +10,6 @@ namespace Database_Management_System.Utilities
     {
         private readonly int size;
         private readonly List<KeyValuePair<TKey, TValue>>[] buckets;
-
         public HashTable(int size = 16)
         {
             this.size = size;

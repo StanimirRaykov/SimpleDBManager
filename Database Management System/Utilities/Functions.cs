@@ -12,21 +12,26 @@ namespace Database_Management_System.Utilities
         {
             var result = new List<string>();
             int start = 0;
+
             for (int i = 0; i < input.Length; i++)
             {
                 if (input[i] == separator)
                 {
-                    result.Add(input.Substring(start, i - start));
+                    if (start != i) // Avoid adding empty strings
+                    {
+                        result.Add(input.Substring(start, i - start).Trim()); // Trim leading/trailing spaces
+                    }
                     start = i + 1;
                 }
             }
 
             if (start < input.Length)
             {
-                result.Add((input.Substring(start)));
+                result.Add(input.Substring(start).Trim());
             }
 
             return result;
         }
+
     }
 }
